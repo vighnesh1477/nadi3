@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Status Predictor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .form, .report {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: none; /* Initially hidden */
+        }
+        .form.active, .report.active {
+            display: block; /* Show active section */
+        }
+        input[type="number"], input[type="submit"], button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="submit"] {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #218838;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        a {
+            display: inline-block;
+            margin-top: 10px;
+            text-align: center;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Health Status Predictor</h1>
+    
+    <!-- Input Form Section -->
+    <div class="form active" id="inputForm">
+        <h2>Enter Sensor Readings</h2>
+        <form id="sensorDataForm">
+            <label for="hrv">Heart Rate Variability (HRV) (ms):</label>
+            <input type="number" id="hrv" required>
+
+            <label for="emg">Electromyography (EMG) (µV):</label>
+            <input type="number" id="emg" required>
+
+            <label for="accelerometer">Accelerometer (m/s²):</label>
+            <input type="number" id="accelerometer" required>
+
+            <label for="thermography">Thermography (°C):</label>
+            <input type="number" id="thermography" required>
+
+            <label for="eda">Electrodermal Activity (EDA) (µS):</label>
+            <input type="number" id="eda" required>
+
+            <label for="oximetry">Oximetry (% SpO2):</label>
+            <input type="number" id="oximetry" required>
+
+            <label for="bioimpedance">Bioimpedance Analysis (Ohms):</label>
+            <input type="number" id="bioimpedance" required>
+
+            <label for="skin-conductance">Skin Conductance (µS):</label>
+            <input type="number" id="skin-conductance" required>
+
+            <input type="submit" value="Predict Health Status">
+        </form>
+    </div>
+
+    <!-- Report Section -->
+    <div class="report" id="reportSection">
+        <h2>Health Status Report</h2>
+        <div id="status"></div>
+        <div id="suggestions"></div>
+        <button id="download">Download Report</button>
+        <a href="#" id="backLink">Go Back</a>
+    </div>
+
+    <script>
+        // Display the input form on page load
+        document.getElementById("inputForm").classList.add("active");
+
+        document.getElementById("sensorDataForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            // Get input values
+            const sensorData = {
+                "HRV": parseFloat(document.getElementById("hrv").value),
+                "EMG": parseFloat(document.getElementById("emg").value),
+                "Accelerometer": parseFloat(document.getElementById("accelerometer").value),
+                "Thermography": parseFloat(document.getElementById("thermography").value),
+                "EDA": parseFloat(document.getElementById("eda").value),
+                "Oximetry": parseFloat(document.getElementById("oximetry").value),
+                "Bioimpedance": parseFloat(document.getElementById("bioimpedance").value),
+                "Skin Conductance": parseFloat(document.getElementById("skin-conductance").value)
+            };
+
+            // Classify health status
+            const predictedStatus = classifyHealth(sensorData);
+            document.getElementById("status").innerText = `Predicted Health Status: ${predictedStatus}`;
+            document.getElementById("suggestions").innerText = generateSuggestions(predictedStatus);
+            document.getElementById("inputForm").classList.remove("active");
+            document.getElementById("reportSection").classList.add("active");
+        });
+
+        document.getElementById("backLink").addEventListener("click", function(event) {
+            event.preventDefault();
+            document.getElementById("reportSection").classList.remove("active");
+            document.getElementById("inputForm").classList.add("active");
+        });
+
+        document.getElementById("download").addEventListener("click", function() {
+            const reportContent = `
+            Health Status Report
+            ------------------------
+            Predicted Health Status: ${document.getElementById("status").innerText.split(": ")[1]}
+
+            Sensor Readings:
+            HRV: ${sensorData.HRV} ms
+            EMG: ${sensorData.EMG} µV
+            Accelerometer: ${sensorData.Accelerometer} m/s²
+            Thermography: ${sensorData.Thermography} °C
+            EDA: ${sensorData.EDA} µS
+            Oximetry: ${sensorData.Oximetry} % SpO2
+            Bioimpedance: ${sensorData.Bioimpedance} Ohms
+            Skin Conductance: ${sensorData['Skin Conductance']} µS
+
+            Suggestions:
+            ${generateSuggestions(document.getElementById("status").innerText.split(": ")[1])}
+            `;
+
+            const blob = new Blob([reportContent], { type: 'text/plain' });
+            const anchor = document.createElement("a");
+            anchor.href = URL.createObjectURL(blob);
+            anchor.download = "Health_Report.txt";
+            anchor.click();
+        });
+
+        function classifyHealth(data) {
+            const healthStatus = {
+                "Healthy": 0,
+                "First-Stage Diabetes": 0,
+                "Max Unhealthy Condition": 0
+            };
+
+            const thresholds = {
+                "HRV": [[50, 100], [40, 50], [Number.NEGATIVE_INFINITY, 40]],
+                "EMG": [[50, 150], [30, 50], [Number.NEGATIVE_INFINITY, 30]],
+                "Accelerometer": [[4.9, 14.7], [14.7, 24.5], [29.4, Number.POSITIVE_INFINITY]],
+                "Thermography": [[33, 37], [32, 33], [Number.NEGATIVE_INFINITY, 32], [37, Number.POSITIVE_INFINITY]],
+                "EDA": [[1, 30], [30, 50], [50, Number.POSITIVE_INFINITY]],
+                "Oximetry": [[95, 100], [90, 95], [Number.NEGATIVE_INFINITY, 90]],
+                "Bioimpedance": [[300, 600], [200, 300], [Number.NEGATIVE_INFINITY, 200]],
+                "Skin Conductance": [[1, 30], [30, 50], [50, Number.POSITIVE_INFINITY]]
+            };
+
+            for (const sensor in data) {
+                const reading = data[sensor];
+                for (let i = 0; i < thresholds[sensor].length; i++) {
+                    const range = thresholds[sensor][i];
+                    if (reading > range[0] && reading <= range[1]) {
+                        if (i === 0) healthStatus["Healthy"]++;
+                        else if (i === 1) healthStatus["First-Stage Diabetes"]++;
+                        else healthStatus["Max Unhealthy Condition"]++;
+                        break;
+                    }
+                }
+            }
+
+            return Object.keys(healthStatus).reduce((a, b) => healthStatus[a] > healthStatus[b] ? a : b);
+        }
+
+        function generateSuggestions(status) {
+            switch (status) {
+                case 'Healthy':
+                    return "Congratulations! Your readings indicate a healthy status. Keep up a balanced diet and regular exercise.";
+                case 'First-Stage Diabetes':
+                    return "You are in the first stage of diabetes. Consider a diet low in sugars and refined carbohydrates. Consult a healthcare provider for further advice.";
+                case 'Max Unhealthy Condition':
+                    return "Your readings indicate serious health issues. It is crucial to seek medical attention immediately and think about significant lifestyle changes.";
+                default:
+                    return "No specific suggestions available.";
+            }
+        }
+    </script>
+</body>
+</html>
